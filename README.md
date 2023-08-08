@@ -1,3 +1,102 @@
+backtrace是个常见的库，可以输出堆栈详细信息，包括源文件名以及行号，但原来做法直接使用malloc/free不可重入。
+小改动让libbacktrace可重入，使用newlib的_malloc_r和_free_r方法，从而确保可在信号处理时调用。
+
+
+原仓库：https://github.com/ianlancetaylor/libbacktrace.git
+
+# 安装:
+```
+  sudo apt install libnewlib-dev && ./configure && make && sudo make install # ubuntu 22.04
+```
+
+# 测试使用
+test.cc:
+```
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <backtrace.h>
+
+/*
+
+  A libbacktrace example program.
+
+  libbacktrace is found at https://github.com/ianlancetaylor/libbacktrace
+
+  Compile this file with: gcc -g -o test test.c -lbacktrace
+
+*/
+
+static void error_callback (void *data, const char *message, int error_number) {
+  if (error_number == -1) {
+    fprintf(stderr, "If you want backtraces, you have to compile with -g\n\n");
+    exit(1);
+  } else {
+    fprintf(stderr, "Backtrace error %d: %s\n", error_number, message);
+  };
+};
+
+static int full_callback (void *data, uintptr_t pc, const char *pathname, int line_number, const char *function) {
+  static int unknown_count = 0;
+  if (pathname != NULL || function != NULL || line_number != 0) {
+    if (unknown_count) {
+      fprintf(stderr, "    ...\n");
+      unknown_count = 0;
+    };
+    const char *filename = rindex(pathname, '/');
+    if (filename) filename++; else filename = pathname;
+    fprintf(stderr, "  %s:%d -- %s\n", filename, line_number, function);
+  } else {
+    unknown_count++;
+  };
+  return 0;
+};
+
+struct backtrace_state *state;
+
+void sigsegv_handler (int number) {
+  fprintf(stderr, "\n*** Segmentation Fault ***\n\n");
+  backtrace_full(state, 0, full_callback, error_callback, NULL);
+  printf("\n");
+  //backtrace_print(state, 0, stderr);
+  exit(1);
+};
+
+void function_two () {
+  *((void **) 0) = 0; // program crashes here
+};
+
+void function_one () {
+  function_two();
+};
+
+int main () {
+  signal(SIGSEGV, sigsegv_handler);
+  state = backtrace_create_state(NULL, 0, error_callback, NULL);
+  function_one();
+  return 0;
+};
+```
+编译：
+```
+g++ test.cc -g -lbacktrace -o a.out
+```
+运行：
+```
+./a.out
+```
+输出：
+```
+*** Segmentation Fault ***
+
+  st.cc:46 -- _Z15sigsegv_handleri
+  sigaction.c:0 -- (null)
+  st.cc:53 -- _Z12function_twov
+  st.cc:57 -- _Z12function_onev
+  st.cc:63 -- main
+  libc-start.c:308 -- __libc_start_main
+```
 # libbacktrace
 A C library that may be linked into a C/C++ program to produce symbolic backtraces
 

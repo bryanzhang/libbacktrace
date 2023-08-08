@@ -40,8 +40,8 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #include "internal.h"
 
 /* Allocation routines to use on systems that do not support anonymous
-   mmap.  This implementation just uses malloc, which means that the
-   backtrace functions may not be safely invoked from a signal
+   mmap.  With a little overhead, this implementation uses _malloc_r to gurantee these
+   backtrace functions be safely invoked from a signal
    handler.  */
 
 /* Allocate memory like malloc.  If ERROR_CALLBACK is NULL, don't
@@ -54,7 +54,9 @@ backtrace_alloc (struct backtrace_state *state ATTRIBUTE_UNUSED,
 {
   void *ret;
 
-  ret = malloc (size);
+  struct _reent my_reent;
+  _REENT_INIT_PTR(&my_reent);
+  ret = _malloc_r(&myreent, size);
   if (ret == NULL)
     {
       if (error_callback)
@@ -71,6 +73,8 @@ backtrace_free (struct backtrace_state *state ATTRIBUTE_UNUSED,
 		backtrace_error_callback error_callback ATTRIBUTE_UNUSED,
 		void *data ATTRIBUTE_UNUSED)
 {
+  struct _reent my_reent;
+  _REENT_INIT_PTR(&my_reent);
   free (p);
 }
 
