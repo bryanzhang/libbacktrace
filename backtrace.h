@@ -36,6 +36,7 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <unwind.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -100,6 +101,28 @@ extern struct backtrace_state *backtrace_create_state (
 typedef int (*backtrace_full_callback) (void *data, uintptr_t pc,
 					const char *filename, int lineno,
 					const char *function);
+/* Data passed through _Unwind_Backtrace.  */
+
+struct backtrace_data
+{
+  /* Number of frames to skip.  */
+  int skip;
+  /* Library state.  */
+  struct backtrace_state *state;
+  /* Callback routine.  */
+  backtrace_full_callback callback;
+  /* Error callback routine.  */
+  backtrace_error_callback error_callback;
+  /* Data to pass to callback routines.  */
+  void *data;
+  /* Value to return from backtrace_full.  */
+  int ret;
+  /* Whether there is any memory available.  */
+  int can_alloc;
+};
+
+/* Unwind the specified context with callback.*/
+extern _Unwind_Reason_Code backtrace_unwind(struct _Unwind_Context* context, struct backtrace_data* bdata);
 
 /* Get a full stack backtrace.  SKIP is the number of frames to skip;
    passing 0 will start the trace with the function calling

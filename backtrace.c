@@ -34,31 +34,11 @@ POSSIBILITY OF SUCH DAMAGE.  */
 
 #include <sys/types.h>
 
-#include "unwind.h"
+#include <unwind.h>
 #include "backtrace.h"
 #include "internal.h"
 
 /* The main backtrace_full routine.  */
-
-/* Data passed through _Unwind_Backtrace.  */
-
-struct backtrace_data
-{
-  /* Number of frames to skip.  */
-  int skip;
-  /* Library state.  */
-  struct backtrace_state *state;
-  /* Callback routine.  */
-  backtrace_full_callback callback;
-  /* Error callback routine.  */
-  backtrace_error_callback error_callback;
-  /* Data to pass to callback routines.  */
-  void *data;
-  /* Value to return from backtrace_full.  */
-  int ret;
-  /* Whether there is any memory available.  */
-  int can_alloc;
-};
 
 /* Unwind library callback routine.  This is passed to
    _Unwind_Backtrace.  */
@@ -67,6 +47,10 @@ static _Unwind_Reason_Code
 unwind (struct _Unwind_Context *context, void *vdata)
 {
   struct backtrace_data *bdata = (struct backtrace_data *) vdata;
+  return backtrace_unwind(context, bdata);
+}
+
+_Unwind_Reason_Code backtrace_unwind(struct _Unwind_Context* context, struct backtrace_data* bdata) {
   uintptr_t pc;
   int ip_before_insn = 0;
 

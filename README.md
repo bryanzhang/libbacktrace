@@ -1,6 +1,7 @@
 backtrace是个常见的库，可以输出堆栈详细信息，包括源文件名以及行号，但原来做法直接使用malloc/free不可重入。
 小改动让libbacktrace可重入，使用newlib的_malloc_r和_free_r方法，从而确保可在信号处理时调用。
 
+另外暴露backtrace_unwind(struct _Unwind_Context*, struct backtrace_data*)，从而允许在打印出指定时刻、指定线程的堆栈，从而方便多线程的堆栈输出。
 
 原仓库：https://github.com/ianlancetaylor/libbacktrace.git
 
